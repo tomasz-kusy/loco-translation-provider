@@ -26,6 +26,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  *  * Tags refers to Symfony's translation domains
  *  * Assets refers to Symfony's translation keys
  *  * Translations refers to Symfony's translated messages
+ *
+ * @experimental in 5.3
  */
 final class LocoProvider implements ProviderInterface
 {
@@ -58,6 +60,7 @@ final class LocoProvider implements ProviderInterface
         }
 
         foreach ($catalogue->all() as $domain => $messages) {
+            $existingIds = $this->getAssetsIds($domain);
             $createdIds = $this->createAssets(array_keys($messages));
             if ($createdIds) {
                 $this->tagsAssets($createdIds, $domain);
@@ -72,8 +75,8 @@ final class LocoProvider implements ProviderInterface
             }
 
             foreach ($catalogue->all() as $domain => $messages) {
-                $ids = $this->getAssetsIds($domain);
-                $this->translateAssets(array_combine($ids, array_values($messages)), $locale);
+//                $ids = $this->getAssetsIds($domain);
+                $this->translateAssets($messages, $locale);
             }
         }
     }
@@ -171,6 +174,7 @@ final class LocoProvider implements ProviderInterface
         foreach ($keys as $key) {
             $responses[$key] = $this->client->request('POST', 'assets', [
                 'body' => [
+                    'id' => $key,
                     'text' => $key,
                     'type' => 'text',
                     'default' => 'untranslated',

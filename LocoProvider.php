@@ -60,7 +60,9 @@ final class LocoProvider implements ProviderInterface
         }
 
         foreach ($catalogue->all() as $domain => $messages) {
-            $existingIds = $this->getAssetsIds($domain);
+            if ($messages === []) {
+                continue;
+            }
             $createdIds = $this->createAssets(array_keys($messages));
             if ($createdIds) {
                 $this->tagsAssets($createdIds, $domain);
@@ -74,8 +76,7 @@ final class LocoProvider implements ProviderInterface
                 $this->createLocale($locale);
             }
 
-            foreach ($catalogue->all() as $domain => $messages) {
-//                $ids = $this->getAssetsIds($domain);
+            foreach ($catalogue->all() as $messages) {
                 $this->translateAssets($messages, $locale);
             }
         }
@@ -198,7 +199,7 @@ final class LocoProvider implements ProviderInterface
         $responses = [];
 
         foreach ($translations as $id => $message) {
-            $responses[$id] = $this->client->request('POST', sprintf('translations/%s/%s', $id, $locale), [
+            $responses[$id] = $this->client->request('POST', sprintf('translations/%s/%s', \rawurlencode($id), $locale), [
                 'body' => $message,
             ]);
         }
@@ -216,7 +217,7 @@ final class LocoProvider implements ProviderInterface
             $this->createTag($tag);
         }
 
-        $response = $this->client->request('POST', sprintf('tags/%s.json', $tag), [
+        $response = $this->client->request('POST', sprintf('tags/%s.json', \rawurlencode($tag)), [
             'body' => implode(',', $ids),
         ]);
 

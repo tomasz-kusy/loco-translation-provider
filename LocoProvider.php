@@ -14,6 +14,7 @@ namespace Symfony\Component\Translation\Bridge\Loco;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Translation\Exception\ProviderException;
 use Symfony\Component\Translation\Loader\LoaderInterface;
+use Symfony\Component\Translation\MessageCatalogue;
 use Symfony\Component\Translation\Provider\ProviderInterface;
 use Symfony\Component\Translation\TranslatorBag;
 use Symfony\Component\Translation\TranslatorBagInterface;
@@ -86,42 +87,39 @@ final class LocoProvider implements ProviderInterface
     {
         $domains = $domains ?: ['*'];
         $translatorBag = new TranslatorBag();
-        $responses = [];
 
         foreach ($locales as $locale) {
             foreach ($domains as $domain) {
-                $responses[] = [
-                    'response' => $this->client->request('GET', sprintf('export/locale/%s.xlf', rawurlencode($locale)), [
-                        'query' => [
-                            'filter' => $domain,
-                            'status' => 'translated,fuzzy',
-                        ],
-                    ]),
-                    'locale' => $locale,
-                    'domain' => $domain,
-                ];
+                $response = $this->client->request('GET', sprintf('export/locale/%s.xlf', rawurlencode($locale)), [
+                    'query' => [
+                        'filter' => $domain,
+                        'status' => 'translated',
+                    ],
+                ]);
+
+                if (404 === $response->getStatusCode()) {
+                    $this->logger->warning(
+                        sprintf('Locale "%s" for domain "%s" does not exist in Loco.', $locale, $domain)
+                    );
+                    continue;
+                }
+
+                $responseContent = $response->getContent(false);
+
+                if (200 !== $response->getStatusCode()) {
+                    throw new ProviderException('Unable to read the Loco response: ' . $responseContent, $response);
+                }
+
+                $locoCatalogue = $this->loader->load($responseContent, $locale, $domain);
+                $catalogue = new MessageCatalogue($locale);
+
+                foreach ($locoCatalogue->all($domain) as $key => $message) {
+                    $catalogue->set($key, $message, $domain);
+                }
+
+                $translatorBag->addCatalogue($catalogue);
             }
         }
-
-        foreach ($responses as $response) {
-            $locale = $response['locale'];
-            $domain = $response['domain'];
-            $response = $response['response'];
-
-            if (404 === $response->getStatusCode()) {
-                $this->logger->warning(sprintf('Locale "%s" for domain "%s" does not exist in Loco.', $locale, $domain));
-                continue;
-            }
-
-            $responseContent = $response->getContent(false);
-
-            if (200 !== $response->getStatusCode()) {
-                throw new ProviderException('Unable to read the Loco response: '.$responseContent, $response);
-            }
-
-            $translatorBag->addCatalogue($this->loader->load($responseContent, $locale, $domain));
-        }
-
         return $translatorBag;
     }
 

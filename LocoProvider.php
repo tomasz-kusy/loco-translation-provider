@@ -218,12 +218,34 @@ final class LocoProvider implements ProviderInterface
             $this->createTag($tag);
         }
 
-        $response = $this->client->request('POST', sprintf('tags/%s.json', \rawurlencode($tag)), [
-            'body' => implode(',', $ids),
+        // Separate ids with and without comma.
+        $idsWithComma = $idsWithoutComma = [];
+        foreach ($ids as $id) {
+            if (false !== strpos($id, ',')) {
+                $idsWithComma[] = $id;
+            } else {
+                $idsWithoutComma[] = $id;
+            }
+        }
+
+        // Set tags for all ids without comma.
+        $response = $this->client->request('POST', sprintf('tags/%s.json', rawurlencode($tag)), [
+            'body' => implode(',', $idsWithoutComma),
         ]);
 
         if (200 !== $response->getStatusCode()) {
             $this->logger->error(sprintf('Unable to tag assets with "%s" on Loco: "%s".', $tag, $response->getContent(false)));
+        }
+
+        // Set tags for each id with comma one by one.
+        foreach ($idsWithComma as $id) {
+            $response = $this->client->request('POST', sprintf('assets/%s/tags', rawurlencode($id)), [
+                'body' => ['name' => $tag],
+            ]);
+
+            if (200 !== $response->getStatusCode()) {
+                $this->logger->error(sprintf('Unable to tag asset "%s" with "%s" on Loco: "%s".', $id, $tag, $response->getContent(false)));
+            }
         }
     }
 

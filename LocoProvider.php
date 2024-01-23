@@ -171,7 +171,7 @@ final class LocoProvider implements ProviderInterface
         $responses = $createdIds = [];
 
         foreach ($keys as $key) {
-            $responses[$key] = $this->client->request('POST', 'assets', [
+            $response = $this->client->request('POST', 'assets', [
                 'body' => [
                     'id' => $key,
                     'text' => $key,
@@ -179,9 +179,9 @@ final class LocoProvider implements ProviderInterface
                     'default' => 'untranslated',
                 ],
             ]);
-        }
+//        }
 
-        foreach ($responses as $key => $response) {
+//        foreach ($responses as $key => $response) {
             if (201 !== $response->getStatusCode()) {
                 $this->logger->error(sprintf('Unable to add new translation key "%s" to Loco: (status code: "%s") "%s".', $key, $response->getStatusCode(), $response->getContent(false)));
             } else {
@@ -197,13 +197,11 @@ final class LocoProvider implements ProviderInterface
         $responses = [];
 
         foreach ($translations as $id => $message) {
-            $responses[$id] = $this->client->request('POST', sprintf('translations/%s/%s', \rawurlencode($id), $locale), [
+            $response = $this->client->request('POST', sprintf('translations/%s/%s', \rawurlencode($id), $locale), [
                 'body' => $message,
                 'headers' => ['Content-Type' => 'text/plain']
             ]);
-        }
 
-        foreach ($responses as $id => $response) {
             if (200 !== $response->getStatusCode()) {
                 $this->logger->error(sprintf('Unable to add translation for key "%s" in locale "%s" to Loco: "%s".', $id, $locale, $response->getContent(false)));
             }

@@ -93,7 +93,7 @@ final class LocoProvider implements ProviderInterface
                 $response = $this->client->request('GET', sprintf('export/locale/%s.xlf', rawurlencode($locale)), [
                     'query' => [
                         'filter' => $domain,
-                        'status' => 'translated',
+                        'status' => 'translated,fuzzy',
                     ],
                 ]);
 
